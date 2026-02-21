@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Test</title>
+</head>
+<body>
+    <h1>AI Service Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        import aiService from './src/services/aiService.js';
+        
+        const output = document.getElementById('output');
+        
+        async function testAI() {
+            const testQueries = [
+                'I have a headache',
+                'Find cardiologists', 
+                'Book appointment',
+                'Emergency help needed'
+            ];
+            
+            for (let query of testQueries) {
+                try {
+                    const response = await aiService.processQuery(query);
+                    output.innerHTML += `<p><strong>Query:</strong> ${query}</p>`;
+                    output.innerHTML += `<p><strong>Response:</strong> ${response.response.substring(0, 200)}...</p><hr>`;
+                } catch (error) {
+                    output.innerHTML += `<p><strong>Error:</strong> ${error.message}</p><hr>`;
+                }
+            }
+        }
+        
+        testAI();
+    </script>
+</body>
+</html>
