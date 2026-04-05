@@ -22,7 +22,7 @@ router.get('/doctors', adminAuth, getAllDoctors);
 router.post('/doctors', adminAuth, createDoctor);
 router.put('/doctors/:id', adminAuth, updateDoctor);
 router.delete('/doctors/:id', adminAuth, deleteDoctor);
-router.patch('/doctors/:id/status', adminAuth, toggleDoctorStatus);
+router.put('/doctors/:id/toggle-status', adminAuth, toggleDoctorStatus);
 
 // Manage users
 router.get('/users', adminAuth, getAllUsers);

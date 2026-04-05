@@ -54,6 +54,11 @@ const appointmentSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed'],
     default: 'pending'
   },
+  paymentDetails: {
+    orderId: { type: String },
+    paymentId: { type: String },
+    signature: { type: String }
+  },
   consultationType: {
     type: String,
     enum: ['in-person', 'tele-health', 'phone'],

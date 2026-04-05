@@ -1,4 +1,4 @@
-import { Calendar, Clock, Mail, MapPin, Phone, User } from "lucide-react";
+import { Calendar, Clock, Mail, MapPin, Phone, User, Stethoscope } from "lucide-react";
 import { useState, useEffect, useContext } from "react";
 import { AppContext } from "../context/AppContext";
 import { appointmentAPI } from "../services/api";
@@ -15,10 +15,8 @@ const MyAppointments = () => {
         try {
           let response;
           if (user.role === 'doctor') {
-            // Fetch appointments for doctor
             response = await appointmentAPI.getByDoctor(user.id);
           } else {
-            // Fetch appointments for patient
             response = await appointmentAPI.getByPatient(user.id);
           }
           setAppointments(response.data.data);
@@ -62,187 +60,211 @@ const MyAppointments = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen font-sans bg-slate-50 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-50 pointer-events-none" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E\")" }} />
+
       {/* Header */}
-      <div className="bg-primary text-white py-16">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-4">
-            <Calendar className="w-10 h-10 text-white" />
+      <div className="relative bg-gradient-to-br from-primary to-[#5A52D5] text-white py-16 lg:py-20">
+        <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm shadow-soft mb-6 border border-white/20">
+            <Calendar className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            My Appointments
+          <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4 tracking-tight">
+            My <em className="italic opacity-90">Appointments</em>
           </h1>
-          <p className="text-xl text-white/90">
-            View and manage your scheduled medical consultations
+          <p className="text-lg text-white/80 max-w-xl mx-auto font-light">
+            View and manage your scheduled medical consultations and patient history.
           </p>
         </div>
       </div>
 
       {/* Appointments List */}
-      <div className="max-w-6xl mx-auto px-4 pb-16">
+      <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-10 pb-20">
         {loading ? (
-          <div className="text-center py-10">
-            <p>Loading appointments...</p>
+          <div className="bg-white rounded-[24px] shadow-soft p-12 text-center border border-slate-100">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-slate-500">Loading appointments...</p>
           </div>
         ) : appointments.length === 0 ? (
-          <div className="text-center py-10">
-            <p>No appointments found.</p>
+          <div className="bg-white rounded-[24px] shadow-soft p-16 text-center border border-slate-100">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">
+              📅
+            </div>
+            <h3 className="text-2xl font-serif font-bold text-slate-800 mb-2">No Appointments</h3>
+            <p className="text-slate-500">You don't have any scheduled appointments at the moment.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {appointments.map((appointment) => (
               <div
                 key={appointment._id}
-                className="bg-white rounded-lg shadow-lg overflow-hidden"
+                className="bg-white rounded-[24px] shadow-soft overflow-hidden border border-slate-100 transition-all hover:shadow-lg hover:border-primary/20"
               >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-4 border-b">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={appointment.doctorId?.image || "https://via.placeholder.com/150"}
-                        alt={appointment.doctorId?.name}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-                      />
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-800">
-                          {appointment.doctorId?.name}
-                        </h3>
-                        <p className="text-primary font-medium">
-                          {appointment.doctorId?.specialty}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="px-3 py-1 rounded-full border text-sm font-medium flex items-center gap-2">
-                      {user?.role === 'doctor' ? (
-                        <select
-                          value={appointment.status}
-                          onChange={(e) => handleStatusChange(e.target.value, appointment._id)}
-                          className="bg-transparent focus:outline-none"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="cancelled">Cancelled</option>
-                          <option value="completed">Completed</option>
-                        </select>
+                <div className="bg-slate-50 p-5 px-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20 flex-shrink-0">
+                      {appointment.doctorId?.image ? (
+                         <img src={appointment.doctorId.image} alt="Doctor" className="w-full h-full object-cover" />
                       ) : (
-                        appointment.status.charAt(0).toUpperCase() +
-                        appointment.status.slice(1)
+                         <Stethoscope className="w-6 h-6 text-primary" />
                       )}
                     </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800 font-serif">
+                        {appointment.doctorId?.name || "Unknown Doctor"}
+                      </h3>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                        {appointment.doctorId?.specialty || "General"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    {user?.role === 'doctor' ? (
+                      <select
+                        value={appointment.status}
+                        onChange={(e) => handleStatusChange(e.target.value, appointment._id)}
+                        className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2 outline-none font-medium shadow-sm transition-all"
+                      >
+                        <option value="pending">⏳ Pending</option>
+                        <option value="confirmed">✅ Confirmed</option>
+                        <option value="cancelled">❌ Cancelled</option>
+                        <option value="completed">🎉 Completed</option>
+                      </select>
+                    ) : (
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider shadow-sm flex items-center gap-1.5
+                        ${appointment.status === 'confirmed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                        appointment.status === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                        appointment.status === 'completed' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                        'bg-amber-50 text-amber-700 border border-amber-200'}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full 
+                          ${appointment.status === 'confirmed' ? 'bg-green-500' :
+                            appointment.status === 'cancelled' ? 'bg-red-500' :
+                            appointment.status === 'completed' ? 'bg-blue-500' :
+                            'bg-amber-500'}`} />
+                        {appointment.status}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Content */}
-
-                <div className="p-6">
-                  <div className="grid md:grid-cols-2 gap-6">
+                <div className="p-6 md:p-8">
+                  <div className="grid md:grid-cols-2 gap-8">
                     {/* Left Column - Appointment Details */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                    <div className="space-y-5">
+                      <h4 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 mb-4">
                         Appointment Details
                       </h4>
 
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-primary" />
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-500">
+                           <Calendar className="w-4 h-4" />
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-800">
+                          <p className="font-semibold text-slate-800">
                             {formatDate(appointment.appointmentDate)}
                           </p>
-                          <p className="text-sm text-gray-600">
-                            Appointment Date
-                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">Date</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-primary" />
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-500">
+                           <Clock className="w-4 h-4" />
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-800">
+                          <p className="font-semibold text-slate-800">
                             {appointment.appointmentTime}
                           </p>
-                          <p className="text-sm text-gray-600">Time</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Time</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <MapPin className="w-5 h-5 text-primary" />
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-500">
+                           <MapPin className="w-4 h-4" />
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-800">
-                            {appointment.doctorId?.location}
+                          <p className="font-semibold text-slate-800">
+                            {appointment.doctorId?.location || "Clinic Address"}
                           </p>
-                          <p className="text-sm text-gray-600">Location</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Location</p>
                         </div>
                       </div>
 
-                      <div className="bg-primary/5 rounded-lg p-3">
+                      <div className="bg-primary/5 rounded-2xl p-5 mt-2 border border-primary/10">
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-700 font-medium">
-                            {" "}
-                            Consultation Fee:
-                          </span>
-                          <span className="text-xl font-bold text-primary">
-                            $ {appointment.fees}
+                          <span className="text-slate-600 font-medium text-sm">Consultation Fee</span>
+                          <span className="text-2xl font-serif font-bold text-primary">
+                            ₹ {appointment.fees}
                           </span>
                         </div>
-
-                        <p className="text-sm text-gray-600 mt-1">
-                          Payment:
-                          {appointment.paymentMethod === "cash"
-                            ? "Pay At Clinic"
-                            : "Online"}
-                        </p>
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-primary/10">
+                           <span className="text-slate-500 text-xs">Payment Method</span>
+                           <span className="text-slate-700 text-sm font-semibold capitalize">
+                             {appointment.paymentMethod === "cash" ? "🏥 Pay At Clinic" : "💳 Online"}
+                           </span>
+                        </div>
                       </div>
                     </div>
+
                     {/* Right Column - patient Details */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                    <div className="space-y-5">
+                      <h4 className="text-[11px] font-bold tracking-widest uppercase text-slate-400 mb-4">
                         {user?.role === 'doctor' ? 'Patient Information' : 'Your Information'}
                       </h4>
 
-                      <div className="flex items-center gap-3">
-                        <User className="w-5 h-5 text-primary" />
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-500">
+                           <User className="w-4 h-4" />
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-800">
+                          <p className="font-semibold text-slate-800">
                             {user?.role === 'doctor' ? appointment.patientName : user.name}
                           </p>
-                          <p className="text-sm text-gray-600">Name</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Name</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Phone className="w-5 h-5 text-primary" />
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-500">
+                           <Phone className="w-4 h-4" />
+                        </div>
                         <div>
                           <a
                             href={`tel:${user?.role === 'doctor' ? appointment.patientPhone : user.phone}`}
-                            className="font-medium text-primary hover:underline"
+                            className="font-semibold text-primary hover:underline"
                           >
                             {user?.role === 'doctor' ? appointment.patientPhone : user.phone}
                           </a>
-                          <p className="text-sm text-gray-600">Phone Number</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Phone Contact</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Mail className="w-5 h-5 text-primary" />
-                        <div>
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-500">
+                           <Mail className="w-4 h-4" />
+                        </div>
+                        <div className="break-all">
                           <a
                             href={`mailto:${user?.role === 'doctor' ? appointment.patientEmail : user.email}`}
-                            className="font-medium text-primary hover:underline"
+                            className="font-semibold text-primary hover:underline"
                           >
                             {user?.role === 'doctor' ? appointment.patientEmail : user.email}
                           </a>
-                          <p className="text-sm text-gray-600">Email Address</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Email Contact</p>
                         </div>
                       </div>
 
                       {appointment.symptoms && (
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-sm font-medium text-gray-700 mb-1">
-                            Symptoms/Reason:
+                        <div className="bg-slate-50 rounded-2xl p-4 mt-2 border border-slate-100">
+                          <p className="text-[11px] font-bold tracking-widest uppercase text-slate-400 mb-2">
+                            Symptoms / Reason
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-700 leading-relaxed">
                             {appointment.symptoms}
                           </p>
                         </div>

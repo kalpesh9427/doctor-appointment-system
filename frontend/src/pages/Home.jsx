@@ -17,7 +17,7 @@ const Home = () => {
   const { navigate } = useContext(AppContext);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-[var(--cream)]">
 
       <Hero />
       <Featured />

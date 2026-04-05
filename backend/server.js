@@ -16,6 +16,7 @@ const doctorRoutes = require('./routes/doctors');
 const appointmentRoutes = require('./routes/appointments');
 const specialtyRoutes = require('./routes/specialties');
 const adminRoutes = require('./routes/admin');
+const paymentRoutes = require('./routes/payment');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -23,6 +24,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/specialties', specialtyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

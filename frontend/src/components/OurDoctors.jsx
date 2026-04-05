@@ -1,49 +1,67 @@
 import { useContext } from "react";
 import { doctorsData } from "../assets/assets.js";
 import { AppContext } from "../context/AppContext.jsx";
-import { StarIcon } from "lucide-react";
+import { StarIcon, ArrowUpRight } from "lucide-react";
+
 const OurDoctors = () => {
   const { navigate } = useContext(AppContext);
   return (
-    <div className="py-16 bg-[#EBEBFE] ">
-      <h1 className="text-3xl md:text-5xl font-semibold text-gray-700 text-center capitalize">
-        Our <span className="text-secondary">Specialist</span> Doctors
-      </h1>
-      <p className="text-center text-gray-600 mt-4 max-w-2xl mx-auto px-4">
-        {" "}
-        Our team of highly qualified specialists is dedicated to providing
-        expert care tailored to your unique health needs.
-      </p>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 items-center justify-center gap-5 mt-10">
+    <section className="section-container">
+      <div className="flex flex-col items-center text-center mb-16">
+        <div className="flex items-center gap-2 text-[0.7rem] font-bold tracking-[0.14em] uppercase text-[var(--purple)] mb-4">
+          <div className="w-8 h-[2px] bg-[var(--purple)] rounded-full" />
+          Our Specialists
+        </div>
+        <h2 className="text-4xl md:text-5xl font-black text-[var(--ink)] mb-6 leading-tight">
+          Our <span className="italic text-[var(--purple)]">Specialist</span> Doctors
+        </h2>
+        <p className="max-w-2xl text-[var(--ink-3)] text-lg font-light leading-relaxed">
+          Our team of highly qualified specialists is dedicated to providing
+          expert care tailored to your unique health needs.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {doctorsData.map((doctor, index) => (
           <div
             key={index}
-            className="bg-white flex flex-col md:flex-row items-center gap-6 p-4 w-[350px] md:w-[500px] mx-auto border border-gray-300 rounded-2xl"
+            className="hover-card group flex flex-col sm:flex-row items-center gap-8 p-6 rounded-2xl cursor-pointer"
+            onClick={() => {
+              navigate("/doctor-details/" + doctor._id);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           >
-            <img src={doctor.image} alt="" />
-            <div className="flex flex-col gap-2">
-              <h2 className="text-lg font-semibold text-gray-700">
-                {doctor.name}
-              </h2>
-              <p>{doctor.specialty}</p>
-              <p className="flex items-center gap-2">
-                Rating:{doctor.rating}{" "}
-                <StarIcon className="w-5 h-5 text-yellow-500" />
-              </p>
-              <button
-                onClick={() => {
-                  navigate("/doctor-details/" + doctor._id);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="border border-secondary text-primary hover:bg-secondary hover:text-white transition-all duration-200 py-2 px-4 rounded-full cursor-pointer mt-2"
-              >
-                See Details
-              </button>
+            <div className="w-40 h-40 flex-shrink-0 bg-[var(--warm)] rounded-xl overflow-hidden">
+              <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+            </div>
+            <div className="flex flex-col gap-3 flex-1">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-bold text-[var(--ink)] mb-1">
+                    {doctor.name}
+                  </h3>
+                  <p className="text-[var(--purple)] font-medium text-sm tracking-wide uppercase">{doctor.specialty}</p>
+                </div>
+                <div className="flex items-center gap-1.5 bg-[var(--purple-pl)] px-3 py-1 rounded-full">
+                  <StarIcon className="w-3.5 h-3.5 text-[var(--purple)] fill-[var(--purple)]" />
+                  <span className="text-[var(--purple)] font-bold text-xs">{doctor.rating}</span>
+                </div>
+              </div>
+              
+              <div className="h-px bg-[var(--line)] my-2" />
+              
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--ink-3)] text-sm font-light">Available for Consultation</span>
+                <button className="flex items-center gap-2 text-[var(--ink)] font-bold text-sm group-hover:text-[var(--purple)] transition-colors">
+                  See Details <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 };
 export default OurDoctors;
+

@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 import { authAPI } from "../services/api";
 import toast from "react-hot-toast";
+import { User, Mail, Phone, Edit2, Save, X } from "lucide-react";
 
 const Profile = () => {
   const { user, setUser } = useContext(AppContext);
@@ -24,7 +25,7 @@ const Profile = () => {
           phone: userData.phone
         });
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Error fetching profile:', error);  
         toast.error('Failed to load profile');
       } finally {
         setLoading(false);
@@ -47,12 +48,12 @@ const Profile = () => {
     try {
       const response = await authAPI.updateProfile(profileData);
       const updatedUser = response.data.user;
-      
+
       // Update context
       setUser(updatedUser);
       // Update localStorage
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      
+
       toast.success('Profile updated successfully');
       setEditing(false);
     } catch (error) {
@@ -65,113 +66,142 @@ const Profile = () => {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading profile...</div>;
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-16">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">My Profile</h1>
-        
-        <div className="flex flex-col md:flex-row gap-8">
+    <div className="min-h-[90vh] py-16 px-6 font-sans">
+      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-soft p-10 relative overflow-hidden border border-slate-100">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-bl-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-tr-full pointer-events-none" />
+
+        <h1 className="text-4xl font-serif font-bold text-slate-800 mb-2 relative z-10">My Profile</h1>
+        <p className="text-slate-500 mb-10 relative z-10">Manage your personal information and preferences.</p>
+
+        <div className="flex flex-col md:flex-row gap-12 relative z-10">
           <div className="md:w-1/3 flex flex-col items-center">
-            <div className="w-40 h-40 rounded-full bg-gray-200 border-4 border-primary/20 flex items-center justify-center overflow-hidden">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+            <div className="w-40 h-40 rounded-full bg-primary/10 border-4 border-white shadow-soft flex items-center justify-center overflow-hidden mb-6 relative group">
+              <User size={64} className="text-primary/50" />
             </div>
-            <h2 className="text-xl font-semibold mt-4 text-gray-700">{profileData.name}</h2>
-            <p className="text-gray-600">{user?.role}</p>
+            <h2 className="text-2xl font-serif font-bold text-slate-800 text-center">{profileData.name}</h2>
+            <div className="px-4 py-1 mt-2 bg-green-100 text-green-700 rounded-full text-xs font-semibold tracking-wider uppercase">
+              {user?.role}
+            </div>
           </div>
-          
+
           <div className="md:w-2/3">
             {editing ? (
-              <form onSubmit={handleSubmit}>
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Full Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={profileData.name}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                  />
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-500 uppercase mb-2">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      name="name"
+                      value={profileData.name}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      required
+                    />
+                  </div>
                 </div>
-                
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={profileData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                  />
+
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-500 uppercase mb-2">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="email"
+                      name="email"
+                      value={profileData.email}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      required
+                    />
+                  </div>
                 </div>
-                
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Phone</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={profileData.phone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                  />
+
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-500 uppercase mb-2">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={profileData.phone}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      required
+                    />
+                  </div>
                 </div>
-                
-                <div className="flex gap-4">
+
+                <div className="flex gap-4 pt-4 border-t border-slate-100">
                   <button
                     type="submit"
-                    className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                    className="flex-1 bg-primary text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition-all font-semibold flex items-center justify-center gap-2 shadow-soft hover:shadow-lg hover:-translate-y-0.5"
                     disabled={loading}
                   >
+                    <Save size={18} />
                     {loading ? 'Saving...' : 'Save Changes'}
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={() => {
                       setEditing(false);
-                      // Revert changes
                       setProfileData({
                         name: user.name,
                         email: user.email,
                         phone: user.phone
                       });
                     }}
-                    className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                    className="flex-1 bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl hover:bg-slate-50 transition-all font-semibold flex items-center justify-center gap-2"
                   >
-                    Cancel
+                    <X size={18} /> Cancel
                   </button>
                 </div>
               </form>
             ) : (
-              <div>
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Full Name</label>
-                  <p className="px-4 py-2 bg-gray-100 rounded-lg">{profileData.name}</p>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 uppercase mb-2">Full Name</label>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl text-slate-800">
+                    <User size={18} className="text-primary" />
+                    <span className="font-medium">{profileData.name}</span>
+                  </div>
                 </div>
-                
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Email</label>
-                  <p className="px-4 py-2 bg-gray-100 rounded-lg">{profileData.email}</p>
+
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 uppercase mb-2">Email Address</label>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl text-slate-800">
+                    <Mail size={18} className="text-primary" />
+                    <span className="font-medium">{profileData.email}</span>
+                  </div>
                 </div>
-                
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Phone</label>
-                  <p className="px-4 py-2 bg-gray-100 rounded-lg">{profileData.phone}</p>
+
+                <div>
+                  <label className="block text-xs font-semibold tracking-wide text-slate-400 uppercase mb-2">Phone Number</label>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl text-slate-800">
+                    <Phone size={18} className="text-primary" />
+                    <span className="font-medium">{profileData.phone}</span>
+                  </div>
                 </div>
-                
-                <button
-                  onClick={() => setEditing(true)}
-                  className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Edit Profile
-                </button>
+
+                <div className="pt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="w-full bg-primary text-white py-3 rounded-xl transition-all font-semibold flex items-center justify-center gap-2 shadow-soft hover:shadow-lg hover:-translate-y-0.5 hover:bg-slate-800"
+                  >
+                    <Edit2 size={18} />
+                    Edit Profile
+                  </button>
+                </div>
               </div>
             )}
           </div>

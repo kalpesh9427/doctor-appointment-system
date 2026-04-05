@@ -8,12 +8,14 @@ const {
   updateAppointmentStatus,
   updateAppointment,
   cancelAppointment,
+  getDoctorBookedSlots,
   getAllAppointments
 } = require('../controllers/appointmentController');
 const { auth, doctorAuth } = require('../middleware/auth');
 
-// Public route for creating appointments
+// Public routes
 router.post('/', createAppointment);
+router.get('/doctor/:doctorId/slots', getDoctorBookedSlots); // Public route to check available slots
 
 // Protected routes
 router.get('/', auth, getAllAppointments); // Get appointments with various filters

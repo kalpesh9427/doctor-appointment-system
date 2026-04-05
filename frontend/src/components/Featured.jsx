@@ -1,36 +1,52 @@
 import { featuresData } from "../assets/assets.js";
+import { ArrowRight } from "lucide-react";
+import Icon from "./Icon";
+
 const Featured = () => {
   return (
-    <div className="py-16 bg-[#F7F7FF]">
-      <h1 className="text-3xl md:text-5xl font-semibold text-gray-700 text-center capitalize">
-        Committed to Your <span className="text-secondary">Health</span> <br />{" "}
-        and Happiness
-      </h1>
-      <p className="text-center text-gray-600 mt-4 max-w-2xl mx-auto px-4">
-        Your well-being is our top priority, with care designed to keep you
-        healthy and fulfilled every day. We’re here to support both your body
-        and peace of mind.
-      </p>
-      <div className="max-w-7xl mx-auto mt-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 px-4  justify-center items-center">
+    <section className="section-container">
+      <div className="flex flex-col items-center text-center mb-16">
+        <div className="flex items-center gap-2 text-[0.7rem] font-bold tracking-[0.14em] uppercase text-[var(--purple)] mb-4">
+          <div className="w-8 h-[2px] bg-[var(--purple)] rounded-full" />
+          Our Commitment
+        </div>
+        <h2 className="text-4xl md:text-5xl font-black text-[var(--ink)] mb-6 leading-tight">
+          Committed to Your <span className="italic text-[var(--purple)]">Health</span> <br /> and Happiness
+        </h2>
+        <p className="max-w-2xl text-[var(--ink-3)] text-lg font-light leading-relaxed">
+          Your well-being is our top priority, with care designed to keep you
+          healthy and fulfilled every day. We’re here to support both your body
+          and peace of mind.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {featuresData.map((feature, index) => (
           <div
             key={index}
-            className="w-[250px] mx-auto bg-white hover:bg-[#C3B2FF] rounded-2xl flex flex-col  gap-5  p-4 items-center justify-center"
+            className="hover-card group p-8 rounded-2xl flex flex-col items-center text-center transition-all duration-300"
           >
-            <img
-              src={feature.image}
-              alt=""
-              className="w-20 hover:bg-white hover:transition hover:scale-105 duration-300 rounded-full"
-            />
-            <h2 className="text-gray-700">{feature.heading}</h2>
-            <p>{feature.description}</p>
-            <button className="bg-primary text-white py-2 px-4 rounded-full cursor-pointer">
+            <div className="w-20 h-20 rounded-full bg-[var(--warm)] flex items-center justify-center mb-6 transition-colors group-hover:bg-[var(--purple-pl)]">
+              <Icon 
+                name={feature.heading === "Home MD" ? "home_health" : 
+                      feature.heading === "Book Appointment" ? "calendar_today" :
+                      feature.heading === "Tele-Health" ? "video_chat" : "call"} 
+                size={34} 
+                className="text-[var(--purple)] transition-transform group-hover:scale-110" 
+                weight={300}
+              />
+            </div>
+            <h3 className="text-xl font-bold text-[var(--ink)] mb-4">{feature.heading}</h3>
+            <p className="text-sm text-[var(--ink-3)] font-light leading-relaxed mb-6">{feature.description}</p>
+            <button className="mt-auto inline-flex items-center gap-2 text-[var(--purple)] text-sm font-bold group/btn hover:gap-3 transition-all duration-200">
               Learn More
+              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
             </button>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 };
 export default Featured;
+

@@ -1,18 +1,61 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ink: #0F172A;
+  --ink-2: #334155;
+  --ink-3: #64748B;
+  --purple: #6C63FF;
+  --purple-dk: #5A52D5;
+  --purple-pl: #F0EFFF;
+  --cream: #F8FAFC;
+  --warm: #F1F5F9;
+  --line: #E2E8F0;
+  --danger: #EF4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+}
+
 @theme {
-  --color-primary: #231f53;
+  --color-primary: var(--purple);
   --color-secondary: #ecb14c;
+  --color-ink: var(--ink);
+  --color-ink-light: var(--ink-3);
 }
 
 * {
-  font-family: "Outfit", sans-serif;
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  font-family: "Inter", sans-serif;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--cream);
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 20 0 L 0 0 0 20' fill='none' stroke='rgba(0,0,0,0.03)' stroke-width='1'/%3E%3C/svg%3E");
+  color: var(--ink-2);
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-playfair {
+  font-family: "Playfair Display", serif;
+}
+
+.section-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 60px;
+}
+
+@media (max-width: 860px) {
+  .section-container {
+    padding: 60px 24px;
+  }
 }
 
 /* Custom animations and transitions */
@@ -21,6 +64,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -29,13 +73,15 @@
 
 @keyframes pulse-glow {
   0% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+    box-shadow: 0 0 0 0 rgba(107, 101, 229, 0.7);
   }
+
   70% {
-    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 10px rgba(107, 101, 229, 0);
   }
+
   100% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 0 rgba(107, 101, 229, 0);
   }
 }
 
@@ -43,9 +89,11 @@
   0% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-10px);
   }
+
   100% {
     transform: translateY(0px);
   }
@@ -69,17 +117,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: var(--cream);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c5c5c5;
+  background: var(--line);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--ink-3);
 }
 
 /* AI chat message animations */
@@ -89,7 +136,7 @@
 
 /* Gradient text effects */
 .gradient-text {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, var(--purple), #7c3aed);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -108,7 +155,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s;
 }
 
@@ -119,21 +166,25 @@
 /* Smooth card hover effects */
 .hover-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--line);
+  background: #fff;
 }
 
 .hover-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-color: var(--purple);
+  box-shadow: 0 20px 40px rgba(11, 15, 26, 0.08);
 }
 
 /* Input focus animations */
 .input-focus {
   transition: all 0.2s ease;
+  border: 1px solid var(--line);
 }
 
 .input-focus:focus {
-  transform: scale(1.02);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(107, 101, 229, 0.1);
 }
 
 /* Button hover effects */

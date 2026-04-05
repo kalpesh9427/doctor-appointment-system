@@ -1,32 +1,367 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { AppContext } from "../context/AppContext";
 import { Link, useLocation } from "react-router-dom";
-import { assets } from "../assets/assets.js";
 import {
-  Menu,
-  User,
-  X,
-  Search,
-  Bell,
-  Calendar,
-  Stethoscope,
-  Home,
-  Info,
-  Phone,
-  Bot,
-  Zap,
-  Lock
+  Menu, User, X, Search, Calendar, Stethoscope,
+  Home, Info, Phone, Bot, Zap, Lock, Send, LogOut
 } from "lucide-react";
 import toast from "react-hot-toast";
 import aiService from "../services/aiService";
+import Icon from "./Icon";
+
+const NAV_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+
+  :root {
+    --ink:        #0F172A;
+    --ink-2:      #334155;
+    --ink-3:      #64748B;
+    --purple:     #6C63FF;
+    --purple-dk:  #5A52D5;
+    --purple-pl:  #F0EFFF;
+    --cream:      #F8FAFC;
+    --line:       #E2E8F0;
+    --danger:     #EF4444;
+    --danger-bg:  rgba(239,68,68,0.1);
+  }
+
+  * { box-sizing: border-box; }
+
+  .nav-root {
+    font-family: 'Inter', sans-serif;
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(253,252,255,0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav-inner {
+    max-width: 1280px; margin: 0 auto;
+    padding: 0 60px; height: 66px;
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 24px;
+  }
+
+  /* ── logo ── */
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; flex-shrink: 0;
+  }
+  .nav-logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--purple);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1rem;
+    transition: background .18s;
+  }
+  .nav-logo:hover .nav-logo-icon { background: var(--purple-dk); }
+  .nav-logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.02em;
+  }
+
+  /* ── links ── */
+  .nav-links {
+    display: flex; align-items: center; gap: 2px;
+    list-style: none; margin: 0; padding: 0;
+  }
+  .nav-link {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 13px; border-radius: 8px;
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--ink-3); text-decoration: none;
+    transition: color .16s, background .16s;
+    white-space: nowrap;
+  }
+  .nav-link svg { opacity: 0.6; transition: opacity .16s; }
+  .nav-link:hover { color: var(--ink); background: rgba(107,101,229,0.06); }
+  .nav-link:hover svg { opacity: 1; }
+  .nav-link.active { color: var(--purple); background: var(--purple-pl); font-weight: 600; }
+  .nav-link.active svg { opacity: 1; }
+
+  /* ── action buttons ── */
+  .nav-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .nav-icon-btn {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--line); border-radius: 9px;
+    background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3);
+    transition: color .16s, border-color .16s, background .16s;
+  }
+  .nav-icon-btn:hover {
+    color: var(--purple); border-color: rgba(107,101,229,0.35);
+    background: var(--purple-pl);
+  }
+
+  .nav-ai-btn {
+    width: 36px; height: 36px; border-radius: 9px; border: none;
+    background: var(--purple); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 14px rgba(107,101,229,0.32);
+    transition: background .18s, transform .16s, box-shadow .18s;
+  }
+  .nav-ai-btn:hover {
+    background: var(--purple-dk); transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(107,101,229,0.42);
+  }
+
+  .nav-signin {
+    padding: 8px 20px; border-radius: 8px;
+    border: 1.5px solid var(--ink); background: transparent;
+    color: var(--ink); font-family: 'Inter', sans-serif;
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: background .16s, color .16s; white-space: nowrap;
+  }
+  .nav-signin:hover { background: var(--ink); color: #fff; }
+
+  /* ── user dropdown ── */
+  .nav-user-wrap { position: relative; }
+  .nav-user-btn {
+    width: 36px; height: 36px; border-radius: 9px;
+    border: 1.5px solid var(--purple); background: var(--purple-pl);
+    color: var(--purple); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .16s;
+  }
+  .nav-user-btn:hover { background: rgba(107,101,229,0.18); }
+
+  .nav-dropdown {
+    position: absolute; top: calc(100% + 10px); right: 0;
+    width: 215px; background: var(--cream);
+    border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(11,15,26,0.11);
+    opacity: 0; transform: scale(0.95) translateY(-6px);
+    pointer-events: none; transform-origin: top right;
+    transition: opacity .16s ease, transform .16s ease;
+    overflow: hidden;
+  }
+  .nav-user-wrap:hover .nav-dropdown, .nav-dropdown.open {
+    opacity: 1; transform: scale(1) translateY(0); pointer-events: all;
+  }
+  .nav-dropdown-header { padding: 13px 15px 10px; border-bottom: 1px solid var(--line); }
+  .nav-dropdown-name { font-weight: 600; color: var(--ink); font-size: 0.875rem; margin: 0 0 2px; }
+  .nav-dropdown-role { font-size: 0.72rem; color: var(--ink-3); text-transform: capitalize; margin: 0; }
+  .nav-dropdown-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 15px; font-size: 0.845rem; color: var(--ink-2);
+    text-decoration: none; cursor: pointer;
+    background: none; border: none; width: 100%; text-align: left;
+    font-family: 'Inter', sans-serif;
+    transition: background .13s, color .13s;
+  }
+  .nav-dropdown-item:hover { background: rgba(107,101,229,0.06); color: var(--ink); }
+  .nav-dropdown-item.accent { color: var(--purple); font-weight: 500; }
+  .nav-dropdown-item.accent:hover { background: var(--purple-pl); }
+  .nav-dropdown-item.danger { color: var(--danger); }
+  .nav-dropdown-item.danger:hover { background: var(--danger-bg); }
+  .nav-dropdown-divider { height: 1px; background: var(--line); margin: 4px 0; }
+
+  /* ── SEARCH OVERLAY ── */
+  .nav-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11,15,26,0.38);
+    backdrop-filter: blur(6px); z-index: 200;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 110px; animation: nav-fade .16s ease;
+  }
+  @keyframes nav-fade { from { opacity: 0; } to { opacity: 1; } }
+  .nav-search-card {
+    width: 100%; max-width: 540px; margin: 0 20px;
+    background: var(--cream); border: 1px solid var(--line);
+    border-radius: 18px; padding: 24px;
+    box-shadow: 0 20px 60px rgba(11,15,26,0.16);
+    animation: nav-slide .2s cubic-bezier(.22,.68,0,1.2);
+  }
+  @keyframes nav-slide {
+    from { transform: translateY(-14px) scale(.97); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .nav-search-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .nav-search-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--ink); margin: 0; }
+  .nav-search-row {
+    display: flex; align-items: center; gap: 10px;
+    border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 4px 4px 4px 13px; background: #fff;
+    transition: border-color .16s;
+  }
+  .nav-search-row:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(107,101,229,0.1); }
+  .nav-search-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem; color: var(--ink); padding: 9px 0;
+  }
+  .nav-search-input::placeholder { color: var(--ink-3); }
+  .nav-search-submit {
+    padding: 9px 20px; border-radius: 8px; border: none;
+    background: var(--purple); color: #fff;
+    font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: background .16s; white-space: nowrap;
+  }
+  .nav-search-submit:hover { background: var(--purple-dk); }
+
+  /* ── AI PANEL ── */
+  .nav-ai-wrap {
+    position: fixed; inset: 0;
+    background: rgba(11,15,26,0.38);
+    backdrop-filter: blur(6px); z-index: 200;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    padding: 20px; animation: nav-fade .16s ease;
+  }
+  @media (min-width: 640px) { .nav-ai-wrap { align-items: center; } }
+  .nav-ai-panel {
+    width: 100%; max-width: 375px; height: 555px;
+    background: var(--cream); border: 1px solid var(--line);
+    border-radius: 20px; display: flex; flex-direction: column;
+    box-shadow: 0 24px 70px rgba(11,15,26,0.18);
+    animation: nav-slide .2s cubic-bezier(.22,.68,0,1.2);
+    overflow: hidden;
+  }
+  .nav-ai-header {
+    padding: 15px 17px; background: var(--ink);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .nav-ai-header-left { display: flex; align-items: center; gap: 10px; }
+  .nav-ai-avatar {
+    width: 33px; height: 33px; border-radius: 9px; background: var(--purple);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-ai-name { font-family: 'Playfair Display', serif; font-size: 0.95rem; color: #fff; margin: 0 0 1px; }
+  .nav-ai-status { font-size: 0.68rem; color: rgba(255,255,255,0.5); letter-spacing: 0.04em; }
+  .nav-ai-status-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: #22c55e; margin-right: 5px;
+    animation: ai-pulse 2s ease-in-out infinite;
+  }
+  @keyframes ai-pulse { 0%,100% { transform:scale(1);opacity:1; } 50% { transform:scale(1.5);opacity:.55; } }
+  .nav-ai-x {
+    width: 28px; height: 28px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.14); background: transparent;
+    color: rgba(255,255,255,0.65); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .14s, color .14s;
+  }
+  .nav-ai-x:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+  .nav-ai-messages {
+    flex: 1; overflow-y: auto; padding: 15px;
+    display: flex; flex-direction: column; gap: 10px;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .nav-msg-row { display: flex; }
+  .nav-msg-row.user { justify-content: flex-end; }
+  .nav-msg-bubble {
+    max-width: 84%; padding: 10px 13px;
+    border-radius: 14px; font-size: 0.845rem; line-height: 1.55;
+  }
+  .nav-msg-row.user .nav-msg-bubble {
+    background: var(--purple); color: #fff;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 3px 12px rgba(107,101,229,0.3);
+  }
+  .nav-msg-row.assistant .nav-msg-bubble {
+    background: #fff; color: var(--ink-2);
+    border: 1px solid var(--line); border-bottom-left-radius: 4px;
+  }
+  .nav-msg-time { font-size: 0.65rem; margin-top: 5px; opacity: 0.48; }
+
+  .nav-ai-footer { padding: 11px 13px 14px; flex-shrink: 0; border-top: 1px solid var(--line); }
+  .nav-ai-input-row {
+    display: flex; gap: 8px;
+    border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 4px 4px 4px 12px; background: #fff;
+    transition: border-color .16s;
+  }
+  .nav-ai-input-row:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(107,101,229,0.1); }
+  .nav-ai-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    font-family: 'Inter', sans-serif; font-size: 0.845rem; color: var(--ink); padding: 7px 0;
+  }
+  .nav-ai-input::placeholder { color: var(--ink-3); }
+  .nav-ai-send {
+    width: 31px; height: 31px; border-radius: 8px; border: none;
+    background: var(--purple); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; align-self: center; transition: background .16s;
+  }
+  .nav-ai-send:hover { background: var(--purple-dk); }
+  .nav-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .nav-chip {
+    padding: 5px 12px; border-radius: 20px;
+    border: 1.5px solid var(--line); background: transparent;
+    font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 500;
+    color: var(--purple); cursor: pointer;
+    transition: background .14s, border-color .14s;
+  }
+  .nav-chip:hover { background: var(--purple-pl); border-color: var(--purple); }
+
+  /* ── MOBILE ── */
+  .nav-mobile-only { display: none; }
+  .nav-desktop-only { display: flex; }
+  @media (max-width: 860px) {
+    .nav-inner { padding: 0 20px; }
+    .nav-desktop-only { display: none; }
+    .nav-mobile-only { display: flex; }
+  }
+  .nav-mobile-drawer {
+    border-top: 1px solid var(--line); background: var(--cream);
+    padding: 10px 20px 18px; animation: nav-slide-down .18s ease;
+  }
+  @keyframes nav-slide-down {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .nav-mobile-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 9px;
+    font-size: 0.9rem; font-weight: 500; color: var(--ink-3);
+    text-decoration: none; cursor: pointer;
+    background: none; border: none; width: 100%; text-align: left;
+    font-family: 'Inter', sans-serif;
+    transition: color .14s, background .14s;
+  }
+  .nav-mobile-link:hover { background: rgba(107,101,229,0.06); color: var(--ink); }
+  .nav-mobile-link.active { color: var(--purple); background: var(--purple-pl); font-weight: 600; }
+  .nav-mobile-link.danger { color: var(--danger); }
+  .nav-mobile-link.danger:hover { background: var(--danger-bg); }
+  .nav-mobile-divider { height: 1px; background: var(--line); margin: 8px 0; }
+  .nav-mobile-user { padding: 8px 12px 4px; }
+  .nav-mobile-user-name { font-weight: 600; color: var(--ink); font-size: 0.875rem; }
+  .nav-mobile-user-role { font-size: 0.72rem; color: var(--ink-3); text-transform: capitalize; margin-top: 1px; }
+  .nav-mobile-signin {
+    width: 100%; padding: 11px; border-radius: 9px;
+    border: 1.5px solid var(--ink); background: transparent;
+    color: var(--ink); font-family: 'Inter', sans-serif;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 8px;
+    transition: background .16s, color .16s;
+  }
+  .nav-mobile-signin:hover { background: var(--ink); color: #fff; }
+`;
 
 const Navbar = () => {
-  const { navigate, user, setUser, doctor } = useContext(AppContext);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  let navigate, user, setUser, doctor;
+  try {
+    const ctx = useContext(AppContext);
+    ({ navigate, user, setUser, doctor } = ctx);
+  } catch {
+    navigate = (p) => (window.location.href = p);
+  }
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
-  const location = useLocation();
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMessages, setAiMessages] = useState([
+    { role: "assistant", content: "Hello! I'm your medical assistant. How can I help you today?", timestamp: new Date() }
+  ]);
+  const [aiInput, setAiInput] = useState("");
+  const aiMsgEnd = useRef(null);
+  const location = useLocation?.() ?? { pathname: "/" };
 
   const menus = [
     { name: "Home", link: "/", icon: Home },
@@ -36,21 +371,21 @@ const Navbar = () => {
     { name: "Contact", link: "/contact", icon: Phone },
   ];
 
-  // AI Assistant State
-  const [aiMessages, setAiMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m your medical assistant. How can I help you today?',
-      timestamp: new Date()
-    }
-  ]);
-  const [aiInput, setAiInput] = useState('');
+  const isActive = (p) => location.pathname === p;
+
+  useEffect(() => { aiMsgEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages]);
+  useEffect(() => {
+    const fn = () => setAiOpen(true);
+    window.addEventListener("openAIAssistantFromApp", fn);
+    return () => window.removeEventListener("openAIAssistantFromApp", fn);
+  }, []);
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    toast.success("Logout successful.");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser?.(null);
+    toast?.success("Logout successful.");
     navigate("/");
   };
 
@@ -58,391 +393,197 @@ const Navbar = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/doctors?search=${searchQuery}`);
-      setIsSearchOpen(false);
+      setSearchOpen(false);
       setSearchQuery("");
     }
   };
 
-  const handleAIMessage = async () => {
+  const handleAI = async () => {
     if (!aiInput.trim()) return;
-
-    console.log('Processing AI query:', aiInput);
-
-    // Add user message
-    const userMessage = { role: 'user', content: aiInput, timestamp: new Date() };
-    setAiMessages(prev => [...prev, userMessage]);
-
+    const msg = { role: "user", content: aiInput, timestamp: new Date() };
+    setAiMessages(p => [...p, msg]);
+    const q = aiInput; setAiInput("");
     try {
-      // Process with real AI service
-      console.log('Calling AI service with user context:', { user });
-      const aiResponse = await aiService.processQuery(aiInput, { user });
-      console.log('AI Response received:', aiResponse);
-
-      const assistantMessage = {
-        role: 'assistant',
-        content: aiResponse.response,
-        type: aiResponse.type,
-        timestamp: new Date()
-      };
-
-      setAiMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('AI processing error:', error);
-      const errorMessage = {
-        role: 'assistant',
-        content: 'Sorry, I\'m having trouble processing your request. Please try again.',
-        type: 'error',
-        timestamp: new Date()
-      };
-      setAiMessages(prev => [...prev, errorMessage]);
+      const res = await aiService.processQuery(q, { user });
+      setAiMessages(p => [...p, { role: "assistant", content: res.response, timestamp: new Date() }]);
+    } catch {
+      setAiMessages(p => [...p, { role: "assistant", content: "Sorry, I'm having trouble. Please try again.", timestamp: new Date() }]);
     }
-
-    setAiInput('');
   };
 
-  const isActive = (path) => location.pathname === path;
-
-  // Listen for global AI assistant open event
-  useEffect(() => {
-    const handleGlobalAI = () => {
-      setIsAIPanelOpen(true);
-    };
-
-    window.addEventListener('openAIAssistantFromApp', handleGlobalAI);
-
-    return () => {
-      window.removeEventListener('openAIAssistantFromApp', handleGlobalAI);
-    };
-  }, []);
+  const quickActions = aiService?.getSuggestedQuickActions?.() ?? [
+    { text: "Find specialist", query: "Find a specialist" },
+    { text: "Book today", query: "Book an appointment today" },
+    { text: "Emergency", query: "Emergency care" },
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto mt-4 sticky top-4 z-50">
-      {/* Desktop Navbar */}
-      <div className="hidden md:flex items-center justify-between bg-white/90 backdrop-blur-lg py-3 px-6 rounded-2xl border border-gray-200 shadow-xl">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-2 rounded-xl">
-            <Stethoscope className="w-8 h-8 text-white" />
-          </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-            MediCare 
-          </span>
-        </Link>
+    <>
+      <style>{NAV_STYLES}</style>
 
-        <div className="flex items-center gap-1">
-          {menus.map((menu, index) => {
-            const Icon = menu.icon;
-            return (
-              <Link
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${isActive(menu.link)
-                    ? "bg-blue-100 text-blue-700 shadow-md"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                to={menu.link}
-                key={index}
-              >
-                <Icon className="w-4 h-4" />
-                {menu.name}
-              </Link>
-            );
-          })}
-        </div>
+      <header className="nav-root">
+        <div className="nav-inner">
 
-        <div className="flex items-center gap-3">
-          {/* Search Button */}
-          <button
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            <Search className="w-5 h-5 text-gray-600" />
-          </button>
-
-          {/* AI Assistant Button */}
-          <button
-            onClick={() => {
-              console.log('Opening AI Panel');
-              setIsAIPanelOpen(!isAIPanelOpen);
-            }}
-            className="p-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg"
-          >
-            <Bot className="w-5 h-5 text-white" />
-          </button>
-
-          {user ? (
-            <div className="relative group">
-              <button className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md">
-                <User className="w-5 h-5 text-white" />
-              </button>
-              <div className="absolute right-0 mt-2 w-56 bg-white shadow-2xl rounded-xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 origin-top z-50 border border-gray-100">
-                <div className="p-4 border-b border-gray-100">
-                  <p className="font-medium text-gray-800">{user.name}</p>
-                  <p className="text-sm text-gray-500 capitalize">{user.role}</p>
-                </div>
-                <ul className="flex flex-col py-2">
-                  <li
-                    onClick={() => { navigate("/profile"); setIsMenuOpen(false); }}
-                    className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-3"
-                  >
-                    <User className="w-4 h-4 text-gray-500" />
-                    My Profile
-                  </li>
-                  <li
-                    onClick={() => { navigate("/my-appointments"); setIsMenuOpen(false); }}
-                    className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-3"
-                  >
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    My Appointments
-                  </li>
-                  {doctor && (
-                    <li
-                      onClick={() => { navigate("/doctor-dashboard"); setIsMenuOpen(false); }}
-                      className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-3 text-blue-600"
-                    >
-                      <Stethoscope className="w-4 h-4" />
-                      Doctor Dashboard
-                    </li>
-                  )}
-                  <li
-                    onClick={() => { navigate("/admin/login"); setIsMenuOpen(false); }}
-                    className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-3 text-purple-600 border-t border-gray-100"
-                  >
-                    <Lock className="w-4 h-4" />
-                    Admin Panel
-                  </li>
-                  <li
-                    onClick={handleLogout}
-                    className="px-4 py-3 hover:bg-red-50 cursor-pointer transition-colors flex items-center gap-3 text-red-500 border-t border-gray-100"
-                  >
-                    <X className="w-4 h-4" />
-                    Logout
-                  </li>
-                </ul>
-              </div>
+          <Link to="/" className="nav-logo">
+            <div className="nav-logo-icon">
+              <Icon name="medical_services" size={18} fill={true} weight={400} />
             </div>
-          ) : (
-            <button
-              onClick={() => navigate("/login")}
-              className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white cursor-pointer py-2 px-6 hover:from-blue-700 hover:to-indigo-800 duration-300 transition-all rounded-xl shadow-lg hover:shadow-xl"
-            >
-              Sign In
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile Navbar */}
-      <div className="md:hidden bg-white/90 backdrop-blur-lg py-3 px-4 rounded-2xl border border-gray-200 shadow-xl">
-        <div className="flex items-center justify-between">
-          <Link to={"/"} className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-1.5 rounded-lg">
-              <Stethoscope className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-              MediCare
-            </span>
+            <span className="nav-logo-text">MediCare</span>
           </Link>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            >
-              <Search className="w-4 h-4 text-gray-600" />
-            </button>
+          {/* Desktop nav */}
+          <nav className="nav-desktop-only" style={{ flex: 1, justifyContent: "center" }}>
+            <ul className="nav-links">
+              {menus.map(({ name, link, icon: Icon }) => (
+                <li key={name}>
+                  <Link to={link} className={`nav-link${isActive(link) ? " active" : ""}`}>
+                    <Icon size={14} />{name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-            <button
-              onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
-              className="p-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all"
-            >
-              <Bot className="w-4 h-4 text-white" />
+          {/* Desktop actions */}
+          <div className="nav-actions nav-desktop-only">
+            <button className="nav-icon-btn" onClick={() => setSearchOpen(true)} title="Search" type="button">
+              <Search size={16} />
             </button>
+            <button className="nav-ai-btn" onClick={() => setAiOpen(true)} title="AI Assistant" type="button">
+              <Bot size={16} />
+            </button>
+            {user ? (
+              <div className="nav-user-wrap">
+                <button className="nav-user-btn" type="button" title={user.name}><User size={15} /></button>
+                <div className="nav-dropdown">
+                  <div className="nav-dropdown-header">
+                    <p className="nav-dropdown-name">{user?.name}</p>
+                    <p className="nav-dropdown-role">{user?.role}</p>
+                  </div>
+                  <Link to="/profile" className="nav-dropdown-item"><User size={14} />My Profile</Link>
+                  <Link to="/my-appointments" className="nav-dropdown-item"><Calendar size={14} />My Appointments</Link>
+                  {doctor && <Link to="/doctor-dashboard" className="nav-dropdown-item accent"><Stethoscope size={14} />Doctor Dashboard</Link>}
+                  <div className="nav-dropdown-divider" />
+                  <Link to="/admin/login" className="nav-dropdown-item accent"><Lock size={14} />Admin Panel</Link>
+                  <div className="nav-dropdown-divider" />
+                  <button className="nav-dropdown-item danger" onClick={handleLogout} type="button"><LogOut size={14} />Logout</button>
+                </div>
+              </div>
+            ) : (
+              <button className="nav-signin" onClick={() => navigate("/login")} type="button">Sign In</button>
+            )}
+          </div>
 
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2">
-              {isMenuOpen ? (
-                <X className="w-6 h-6 text-gray-700" />
-              ) : (
-                <Menu className="w-6 h-6 text-gray-700" />
-              )}
+          {/* Mobile actions */}
+          <div className="nav-actions nav-mobile-only">
+            <button className="nav-icon-btn" onClick={() => setSearchOpen(true)} type="button"><Search size={16} /></button>
+            <button className="nav-ai-btn" onClick={() => setAiOpen(true)} type="button"><Bot size={16} /></button>
+            <button className="nav-icon-btn" onClick={() => setMenuOpen(!menuOpen)} type="button">
+              {menuOpen ? <X size={17} /> : <Menu size={17} />}
             </button>
           </div>
         </div>
 
-        {isMenuOpen && (
-          <div className="mt-4 flex flex-col gap-1 bg-gray-50 rounded-xl p-2">
-            {menus.map((menu, index) => {
-              const Icon = menu.icon;
-              return (
-                <Link
-                  onClick={() => setIsMenuOpen(false)}
-                  key={index}
-                  to={menu.link}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${isActive(menu.link)
-                      ? "bg-blue-100 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {menu.name}
-                </Link>
-              );
-            })}
-
+        {/* Mobile drawer */}
+        {menuOpen && (
+          <div className="nav-mobile-drawer">
+            {menus.map(({ name, link, icon: Icon }) => (
+              <Link key={name} to={link}
+                className={`nav-mobile-link${isActive(link) ? " active" : ""}`}
+                onClick={() => setMenuOpen(false)}>
+                <Icon size={15} />{name}
+              </Link>
+            ))}
             {user ? (
-              <div className="mt-2 pt-2 border-t border-gray-200">
-                <div className="px-4 py-2 text-sm text-gray-600">
-                  <p className="font-medium">{user.name}</p>
-                  <p className="capitalize">{user.role}</p>
+              <>
+                <div className="nav-mobile-divider" />
+                <div className="nav-mobile-user">
+                  <div className="nav-mobile-user-name">{user.name}</div>
+                  <div className="nav-mobile-user-role">{user.role}</div>
                 </div>
-                <Link
-                  onClick={() => setIsMenuOpen(false)}
-                  to="/profile"
-                  className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
-                >
-                  <User className="w-4 h-4" />
-                  Profile
-                </Link>
-                <Link
-                  onClick={() => setIsMenuOpen(false)}
-                  to="/my-appointments"
-                  className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Appointments
-                </Link>
-                {doctor && (
-                  <Link
-                    onClick={() => setIsMenuOpen(false)}
-                    to="/doctor-dashboard"
-                    className="flex items-center gap-3 px-4 py-3 text-blue-600 hover:bg-blue-50 rounded-lg"
-                  >
-                    <Stethoscope className="w-4 h-4" />
-                    Doctor Dashboard
-                  </Link>
-                )}
-                <Link
-                  onClick={() => setIsMenuOpen(false)}
-                  to="/admin/login"
-                  className="flex items-center gap-3 px-4 py-3 text-purple-600 hover:bg-purple-50 rounded-lg"
-                >
-                  <Lock className="w-4 h-4" />
-                  Admin Panel
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-3 w-full text-left px-4 py-3 text-red-500 hover:bg-red-50 rounded-lg"
-                >
-                  <X className="w-4 h-4" />
-                  Logout
-                </button>
-              </div>
+                <Link to="/profile" className="nav-mobile-link" onClick={() => setMenuOpen(false)}><User size={15} />Profile</Link>
+                <Link to="/my-appointments" className="nav-mobile-link" onClick={() => setMenuOpen(false)}><Calendar size={15} />My Appointments</Link>
+                {doctor && <Link to="/doctor-dashboard" className="nav-mobile-link active" onClick={() => setMenuOpen(false)}><Stethoscope size={15} />Doctor Dashboard</Link>}
+                <Link to="/admin/login" className="nav-mobile-link active" onClick={() => setMenuOpen(false)}><Lock size={15} />Admin Panel</Link>
+                <div className="nav-mobile-divider" />
+                <button className="nav-mobile-link danger" onClick={handleLogout} type="button"><LogOut size={15} />Logout</button>
+              </>
             ) : (
-              <button
-                onClick={() => { navigate("/login"); setIsMenuOpen(false); }}
-                className="mt-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white w-full py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-800 transition-all"
-              >
+              <button className="nav-mobile-signin" onClick={() => { navigate("/login"); setMenuOpen(false); }} type="button">
                 Sign In
               </button>
             )}
           </div>
         )}
-      </div>
+      </header>
 
-      {/* Search Overlay */}
-      {isSearchOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-20">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Search Doctors</h3>
-              <button
-                onClick={() => setIsSearchOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* ── SEARCH OVERLAY ── */}
+      {searchOpen && (
+        <div className="nav-overlay" onClick={() => setSearchOpen(false)}>
+          <div className="nav-search-card" onClick={e => e.stopPropagation()}>
+            <div className="nav-search-top">
+              <h3 className="nav-search-title">Find a Doctor</h3>
+              <button className="nav-icon-btn" onClick={() => setSearchOpen(false)} type="button"><X size={15} /></button>
             </div>
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by doctor name, specialty, or symptoms..."
-                className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-lg"
-                autoFocus
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Search
-              </button>
+            <form onSubmit={handleSearch}>
+              <div className="nav-search-row">
+                <Search size={16} color="var(--ink-3)" style={{ flexShrink: 0 }} />
+                <input
+                  className="nav-search-input" type="text"
+                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Name, specialty, or symptoms…" autoFocus
+                />
+                <button className="nav-search-submit" type="submit">Search</button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* AI Assistant Panel */}
-      {isAIPanelOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-end md:items-center md:justify-end p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md h-[600px] md:h-[700px] flex flex-col border border-gray-200">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-500 to-pink-500 rounded-t-2xl">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-2 rounded-full">
-                  <Bot className="w-5 h-5 text-white" />
+      {/* ── AI PANEL ── */}
+      {aiOpen && (
+        <div className="nav-ai-wrap" onClick={() => setAiOpen(false)}>
+          <div className="nav-ai-panel" onClick={e => e.stopPropagation()}>
+            <div className="nav-ai-header">
+              <div className="nav-ai-header-left">
+                <div className="nav-ai-avatar"><Bot size={16} color="#fff" /></div>
+                <div>
+                  <div className="nav-ai-name">Medical Assistant</div>
+                  <div className="nav-ai-status"><span className="nav-ai-status-dot" />Online · Ready to help</div>
                 </div>
-                <h3 className="text-lg font-bold text-white">Medical AI Assistant</h3>
               </div>
-              <button
-                onClick={() => setIsAIPanelOpen(false)}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
+              <button className="nav-ai-x" onClick={() => setAiOpen(false)} type="button"><X size={14} /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {aiMessages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-xs md:max-w-md px-4 py-3 rounded-2xl ${message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-gray-100 text-gray-800 rounded-bl-md'
-                    }`}>
-                    <p className="text-sm">{message.content}</p>
-                    <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+            <div className="nav-ai-messages">
+              {aiMessages.map((m, i) => (
+                <div key={i} className={`nav-msg-row ${m.role}`}>
+                  <div className="nav-msg-bubble">
+                    {m.content}
+                    <div className="nav-msg-time">
+                      {m.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
                   </div>
                 </div>
               ))}
+              <div ref={aiMsgEnd} />
             </div>
 
-            <div className="p-4 border-t border-gray-200">
-              <form onSubmit={(e) => { e.preventDefault(); handleAIMessage(); }} className="flex gap-2">
-                <input
-                  type="text"
-                  value={aiInput}
-                  onChange={(e) => setAiInput(e.target.value)}
-                  placeholder="Ask me about doctors, appointments, or symptoms..."
-                  className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                />
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-3 rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all"
-                >
-                  <Bot className="w-5 h-5" />
-                </button>
+            <div className="nav-ai-footer">
+              <form onSubmit={e => { e.preventDefault(); handleAI(); }}>
+                <div className="nav-ai-input-row">
+                  <input
+                    className="nav-ai-input" value={aiInput}
+                    onChange={e => setAiInput(e.target.value)}
+                    placeholder="Ask about doctors, appointments…"
+                  />
+                  <button className="nav-ai-send" type="submit"><Send size={14} /></button>
+                </div>
               </form>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {aiService.getSuggestedQuickActions().map((action, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setAiInput(action.query)}
-                    className="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition-colors"
-                  >
-                    {action.text}
+              <div className="nav-chips">
+                {quickActions.map((a, i) => (
+                  <button key={i} className="nav-chip" type="button" onClick={() => setAiInput(a.query)}>
+                    {a.text}
                   </button>
                 ))}
               </div>
@@ -450,7 +591,7 @@ const Navbar = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

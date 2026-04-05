@@ -65,6 +65,7 @@ export const appointmentAPI = {
   getByPatient: (patientId, params) => api.get(`/appointments/patient/${patientId}`, { params }),
   getByDoctor: (doctorId, params) => api.get(`/appointments/doctor/${doctorId}`, { params }),
   getById: (id) => api.get(`/appointments/${id}`),
+  getSlots: (doctorId, params) => api.get(`/appointments/doctor/${doctorId}/slots`, { params }),
   update: (id, appointmentData) => api.put(`/appointments/${id}`, appointmentData),
   updateStatus: (id, status) => api.put(`/appointments/${id}/status`, { status }),
   cancel: (id) => api.put(`/appointments/${id}/cancel`),
@@ -98,6 +99,12 @@ export const adminAPI = {
   getAllAppointments: (params) => api.get('/admin/appointments', { params }),
   updateAppointmentStatus: (id, status) => api.put(`/admin/appointments/${id}/status`, { status }),
   deleteAppointment: (id) => api.delete(`/admin/appointments/${id}`),
+};
+
+// Payment API calls
+export const paymentAPI = {
+  createOrder: (appointmentId) => api.post('/payments/create-order', { appointmentId }),
+  verifyPayment: (paymentData) => api.post('/payments/verify-payment', paymentData),
 };
 
 export default api;

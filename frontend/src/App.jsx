@@ -31,8 +31,8 @@ const AdminUsers = lazy(() => import("./pages/admin/Users"));
 
 // Loading component
 const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  <div className="min-h-screen flex items-center justify-center bg-[var(--cream)]">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--purple)]"></div>
   </div>
 );
 
@@ -45,7 +45,7 @@ const App = () => {
   const showNavbar = !isDashboard;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-[var(--cream)]">
       <Toaster position="top-right" />
       {showNavbar && <Navbar />}
       <Suspense fallback={<LoadingSpinner />}>

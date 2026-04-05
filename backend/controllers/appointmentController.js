@@ -107,12 +107,16 @@ const getAppointmentsForPatient = async (req, res) => {
 const getAppointmentsForDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    const { status } = req.query;
+    const { status, appointmentDate } = req.query;
 
     let filter = { doctorId };
 
     if (status) {
       filter.status = status;
+    }
+
+    if (appointmentDate) {
+      filter.appointmentDate = appointmentDate;
     }
 
     const appointments = await Appointment.find(filter)
@@ -204,19 +208,44 @@ const updateAppointment = async (req, res) => {
       notes
     } = req.body;
 
-    const appointment = await Appointment.findByIdAndUpdate(
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    // If date or time is being updated, check for conflicts
+    if (appointmentDate || appointmentTime) {
+      const dateToCheck = appointmentDate || appointment.appointmentDate;
+      const timeToCheck = appointmentTime || appointment.appointmentTime;
+
+      const existingAppointment = await Appointment.findOne({
+        _id: { $ne: req.params.id },
+        doctorId: appointment.doctorId,
+        appointmentDate: dateToCheck,
+        appointmentTime: timeToCheck,
+        status: { $ne: 'cancelled' }
+      });
+
+      if (existingAppointment) {
+        return res.status(400).json({ message: 'New appointment slot is already booked' });
+      }
+    }
+
+    // Update appointment
+    const updatedAppointment = await Appointment.findByIdAndUpdate(
       req.params.id,
       {
-        patientName,
-        patientPhone,
-        patientEmail,
-        appointmentDate,
-        appointmentTime,
-        symptoms,
-        paymentMethod,
-        consultationType,
-        fees,
-        notes,
+        patientName: patientName || appointment.patientName,
+        patientPhone: patientPhone || appointment.patientPhone,
+        patientEmail: patientEmail || appointment.patientEmail,
+        appointmentDate: appointmentDate || appointment.appointmentDate,
+        appointmentTime: appointmentTime || appointment.appointmentTime,
+        symptoms: symptoms || appointment.symptoms,
+        paymentMethod: paymentMethod || appointment.paymentMethod,
+        consultationType: consultationType || appointment.consultationType,
+        fees: fees || appointment.fees,
+        notes: notes || appointment.notes,
         updatedAt: Date.now()
       },
       { new: true, runValidators: true }
@@ -332,11 +361,38 @@ const getAllAppointments = async (req, res) => {
   }
 };
 
+// Get only booked slots (publicly accessible)
+const getDoctorBookedSlots = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const { appointmentDate } = req.query;
+
+    let filter = { doctorId, status: { $ne: 'cancelled' } };
+
+    if (appointmentDate) {
+      filter.appointmentDate = appointmentDate;
+    }
+
+    const appointments = await Appointment.find(filter)
+      .select('appointmentDate appointmentTime -_id');
+
+    res.json({
+      success: true,
+      count: appointments.length,
+      data: appointments
+    });
+  } catch (error) {
+    console.error('Get doctor booked slots error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   createAppointment,
   getAppointmentsForPatient,
   getAppointmentsForDoctor,
   getAppointmentById,
+  getDoctorBookedSlots,
   updateAppointmentStatus,
   updateAppointment,
   cancelAppointment,
