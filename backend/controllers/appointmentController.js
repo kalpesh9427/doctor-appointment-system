@@ -1,6 +1,8 @@
+const mongoose = require('mongoose');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
+const { generateAppointmentReceipt } = require('../utils/pdfUtils');
 
 // Create a new appointment
 const createAppointment = async (req, res) => {
@@ -300,59 +302,52 @@ const cancelAppointment = async (req, res) => {
 // Get all appointments (for admin or filtered by user)
 const getAllAppointments = async (req, res) => {
   try {
-    const { status, doctorId, patientId, startDate, endDate } = req.query;
+    const { status, doctorId, patientId, patientName, startDate, endDate } = req.query;
 
     let filter = {};
 
     // If the authenticated user is a doctor, only show their appointments
     if (req.user && req.user.role === 'doctor') {
-      // Find the doctor profile to get the doctor's ID
       const doctorProfile = await Doctor.findOne({ userId: req.user._id });
       if (doctorProfile) {
         filter.doctorId = doctorProfile._id;
       } else {
-        // If no doctor profile found, return empty result
-        return res.json({
-          success: true,
-          count: 0,
-          data: []
-        });
+        return res.json({ success: true, count: 0, data: [] });
       }
     }
 
-    // Apply additional filters if provided by admin or other users
-    if (status) {
-      filter.status = status;
-    }
-
-    if (doctorId && req.user && req.user.role === 'admin') {
-      // Only allow admin to override doctorId filter
-      filter.doctorId = doctorId;
-    }
-
-    if (patientId) {
-      filter.patientId = patientId;
-    }
+    if (status) filter.status = status;
+    if (doctorId && req.user && req.user.role === 'admin') filter.doctorId = doctorId;
+    if (patientId) filter.patientId = patientId;
+    if (patientName) filter.patientName = { $regex: patientName, $options: 'i' };
 
     if (startDate && endDate) {
-      filter.appointmentDate = { 
-        $gte: startDate, 
-        $lte: endDate 
-      };
+      filter.appointmentDate = { $gte: startDate, $lte: endDate };
     } else if (startDate) {
       filter.appointmentDate = { $gte: startDate };
     } else if (endDate) {
       filter.appointmentDate = { $lte: endDate };
     }
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Appointment.countDocuments(filter);
 
     const appointments = await Appointment.find(filter)
       .populate('patientId', 'name email phone')
       .populate('doctorId', 'name specialty image')
-      .sort({ appointmentDate: 1, appointmentTime: 1 });
+      .sort({ appointmentDate: -1, appointmentTime: -1 }) // Sort by newest first
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       count: appointments.length,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
       data: appointments
     });
   } catch (error) {
@@ -387,6 +382,137 @@ const getDoctorBookedSlots = async (req, res) => {
   }
 };
 
+// Generate and download appointment receipt (PDF)
+const downloadReceipt = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find appointment and populate doctor details
+    const appointment = await Appointment.findById(id)
+      .populate('doctorId', 'name specialty fees phone');
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    // Set response headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=receipt-${id}.pdf`);
+
+    // Generate PDF and stream to response
+    generateAppointmentReceipt(appointment, res);
+
+  } catch (error) {
+    console.error('Download receipt error:', error);
+    res.status(500).json({ message: 'Server error while generating receipt', error: error.message });
+  }
+};
+
+// Delete appointment
+const deleteAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appointment = await Appointment.findByIdAndDelete(id);
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Appointment deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete appointment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Add prescription/notes to an appointment
+const addPrescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { medicines, advice, diagnosedSymptoms } = req.body;
+
+    const appointment = await Appointment.findByIdAndUpdate(
+      id,
+      {
+        prescription: {
+          medicines,
+          advice,
+          diagnosedSymptoms
+        },
+        status: 'completed', // Automatically mark as completed when prescription is added
+        updatedAt: Date.now()
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Prescription added successfully',
+      data: appointment
+    });
+  } catch (error) {
+    console.error('Add prescription error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get dashboard statistics for a doctor
+const getDoctorDashboardStats = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Today's appointments
+    const todayAppointments = await Appointment.countDocuments({
+      doctorId,
+      appointmentDate: today,
+      status: { $ne: 'cancelled' }
+    });
+
+    // Total Patients (unique)
+    const appointments = await Appointment.find({ doctorId });
+    const totalPatients = [...new Set(appointments.map(a => a.patientId.toString()))].length;
+
+    // Total Earnings (completed/confirmed appointments)
+    const earningsData = await Appointment.aggregate([
+      { 
+        $match: { 
+          doctorId: new mongoose.Types.ObjectId(doctorId),
+          status: { $in: ['confirmed', 'completed'] },
+          paymentStatus: 'paid' // Or just those that are confirmed/completed
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          totalEarnings: { $sum: '$fees' } 
+        } 
+      }
+    ]);
+
+    const totalEarnings = earningsData.length > 0 ? earningsData[0].totalEarnings : 0;
+
+    res.json({
+      success: true,
+      data: {
+        todayAppointments,
+        totalPatients,
+        totalEarnings
+      }
+    });
+  } catch (error) {
+    console.error('Get doctor stats error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   createAppointment,
   getAppointmentsForPatient,
@@ -396,5 +522,9 @@ module.exports = {
   updateAppointmentStatus,
   updateAppointment,
   cancelAppointment,
-  getAllAppointments
+  getAllAppointments,
+  downloadReceipt,
+  deleteAppointment,
+  addPrescription,
+  getDoctorDashboardStats
 };

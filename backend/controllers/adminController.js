@@ -1,36 +1,53 @@
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
+const Appointment = require('../models/Appointment');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 // Get all doctors with search and pagination
 const getAllDoctors = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', specialty = '' } = req.query;
+    const { page = 1, limit = 10, search = '' } = req.query;
     const skip = (page - 1) * limit;
 
-    let filter = { role: 'doctor' };
+    let userFilter = { role: 'doctor' };
+    let doctorFilter = {};
+
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+      const searchRegex = { $regex: search, $options: 'i' };
+      
+      // Find doctor profiles matching search in profile-specific fields
+      const matchingProfiles = await Doctor.find({
+        $or: [
+          { specialty: searchRegex },
+          { clinicName: searchRegex },
+          { city: searchRegex },
+          { education: searchRegex },
+          { licenseNumber: searchRegex }
+        ]
+      }).select('userId');
+      
+      const userIdsFromProfiles = matchingProfiles.map(p => p.userId);
+
+      // Expand user filter to include users whose profile matches OR users whose core info matches
+      userFilter.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { _id: { $in: userIdsFromProfiles } }
       ];
     }
 
-    // Manual population approach
-    const users = await User.find(filter)
+    const users = await User.find(userFilter)
       .select('-password')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
-    // Get doctor profiles for these users
     const doctorProfiles = await Doctor.find({
       userId: { $in: users.map(user => user._id) }
     });
 
-    // Combine user data with doctor profiles
     const doctorsWithProfiles = users.map(user => {
       const profile = doctorProfiles.find(p => p.userId.toString() === user._id.toString());
       return {
@@ -39,7 +56,7 @@ const getAllDoctors = async (req, res) => {
       };
     });
 
-    const total = await User.countDocuments(filter);
+    const total = await User.countDocuments(userFilter);
 
     res.json({
       success: true,
@@ -316,7 +333,7 @@ const getDashboardStats = async (req, res) => {
     const totalDoctors = await User.countDocuments({ role: 'doctor' });
     const activeDoctors = await Doctor.countDocuments({ isActive: true });
     const totalPatients = await User.countDocuments({ role: 'patient' });
-    const totalAppointments = 0; // Would need Appointment model
+    const totalAppointments = await Appointment.countDocuments();
 
     res.json({
       success: true,
@@ -514,6 +531,11 @@ const deleteUser = async (req, res) => {
         success: false,
         message: 'User not found'
       });
+    }
+
+    // If user was a doctor, delete their doctor profile too
+    if (user.role === 'doctor') {
+      await Doctor.findOneAndDelete({ userId: id });
     }
 
     res.json({

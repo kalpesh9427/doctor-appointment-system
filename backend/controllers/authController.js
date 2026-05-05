@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
-const { hashPassword, comparePassword, generateToken } = require('../utils/authUtils');
+const { hashPassword, comparePassword, generateToken, generateOTP } = require('../utils/authUtils');
+const { sendOTPEmail } = require('../utils/emailUtils');
 const jwt = require('jsonwebtoken');
 
 // Register user
@@ -17,16 +18,25 @@ const registerUser = async (req, res) => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // Generate OTP
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
     // Create new user
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       phone,
-      role: role || 'patient'
+      role: role || 'patient',
+      otpCode: otp,
+      otpExpires: otpExpires
     });
 
     await newUser.save();
+
+    // Send OTP email (not awaiting to avoid blocking)
+    sendOTPEmail(newUser.email, otp, newUser.name);
 
     // Generate JWT token
     const token = generateToken(newUser._id);
@@ -257,11 +267,161 @@ const updateDoctorProfile = async (req, res) => {
   }
 };
 
+// Verify OTP
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user is already verified
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    // Check if OTP matches and has not expired
+    if (user.otpCode !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Update user verification status
+    user.isVerified = true;
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Email verified successfully', isVerified: true });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ message: 'Server error during verification', error: error.message });
+  }
+};
+
+// Resend OTP
+const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    // Generate new OTP
+    const otp = generateOTP();
+    user.otpCode = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    // Send email
+    await sendOTPEmail(user.email, otp, user.name);
+
+    res.json({ message: 'New OTP sent to your email' });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'Server error while resending OTP', error: error.message });
+  }
+};
+
+// Forgot Password - Send OTP
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'No account found with this email' });
+    }
+
+    // Generate OTP for password reset
+    const otp = generateOTP();
+    user.otpCode = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    // Send email (Customized for password reset)
+    const mailOptions = {
+      from: `"MediCare Team" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Password Reset OTP - MediCare',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+          <h2 style="color: #6C63FF; text-align: center;">Reset Your Password</h2>
+          <p>Hi ${user.name},</p>
+          <p>We received a request to reset your password. Use the OTP below to proceed:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <span style="font-size: 32px; font-weight: bold; color: #1a1a1a; letter-spacing: 5px; background: #f4f4f4; padding: 10px 20px; border-radius: 5px;">${otp}</span>
+          </div>
+          <p>This code will expire in 10 minutes. If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      `
+    };
+
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+    
+    await transporter.sendMail(mailOptions);
+
+    res.json({ message: 'Password reset OTP sent to your email' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Reset Password
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify OTP
+    if (user.otpCode !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update password and clear OTP
+    user.password = hashedPassword;
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    // ensure user is verified if they reset password
+    user.isVerified = true; 
+    
+    await user.save();
+
+    res.json({ message: 'Password reset successful. You can now login with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getUserProfile,
   updateUserProfile,
   getDoctorProfile,
-  updateDoctorProfile
+  updateDoctorProfile,
+  verifyOTP,
+  resendOTP,
+  forgotPassword,
+  resetPassword
 };

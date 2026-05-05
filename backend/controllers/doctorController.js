@@ -16,18 +16,24 @@ const getAllDoctors = async (req, res) => {
       filter.$or = [
         { name: new RegExp(search, 'i') },
         { specialty: new RegExp(search, 'i') },
-        { education: new RegExp(search, 'i') }
+        { education: new RegExp(search, 'i') },
+        { clinicName: new RegExp(search, 'i') },
+        { city: new RegExp(search, 'i') },
+        { email: new RegExp(search, 'i') }
       ];
     }
     
     const doctors = await Doctor.find(filter)
-      .populate('userId', 'email phone')
+      .populate('userId', 'email phone role')
       .sort({ rating: -1 }); // Sort by rating descending
+    
+    // Filter out orphaned doctors or users whose role changed
+    const validDoctors = doctors.filter(doc => doc.userId && doc.userId.role === 'doctor');
     
     res.json({
       success: true,
-      count: doctors.length,
-      data: doctors
+      count: validDoctors.length,
+      data: validDoctors
     });
   } catch (error) {
     console.error('Get doctors error:', error);
@@ -196,15 +202,48 @@ const getDoctorsBySpecialty = async (req, res) => {
     const doctors = await Doctor.find({ 
       specialty: new RegExp(specialty, 'i'),
       isActive: true 
-    }).populate('userId', 'email phone').sort({ rating: -1 });
+    }).populate('userId', 'email phone role').sort({ rating: -1 });
+    
+    // Filter out orphaned doctors or users whose role changed
+    const validDoctors = doctors.filter(doc => doc.userId && doc.userId.role === 'doctor');
     
     res.json({
       success: true,
-      count: doctors.length,
-      data: doctors
+      count: validDoctors.length,
+      data: validDoctors
     });
   } catch (error) {
     console.error('Get doctors by specialty error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Update doctor availability (slots and holidays)
+const updateAvailability = async (req, res) => {
+  try {
+    const { availability, holidays } = req.body;
+    
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      {
+        availability,
+        holidays,
+        updatedAt: Date.now()
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Availability updated successfully',
+      data: doctor
+    });
+  } catch (error) {
+    console.error('Update availability error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -215,5 +254,6 @@ module.exports = {
   createDoctor,
   updateDoctor,
   deleteDoctor,
-  getDoctorsBySpecialty
+  getDoctorsBySpecialty,
+  updateAvailability
 };

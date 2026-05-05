@@ -93,6 +93,10 @@ const doctorSchema = new mongoose.Schema({
     }],
     default: []
   },
+  holidays: [{
+    date: { type: String, required: true }, // YYYY-MM-DD
+    reason: { type: String }
+  }],
   isActive: {
     type: Boolean,
     default: true

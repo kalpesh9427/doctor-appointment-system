@@ -68,6 +68,11 @@ const appointmentSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  prescription: {
+    medicines: { type: String, trim: true },
+    advice: { type: String, trim: true },
+    diagnosedSymptoms: { type: String, trim: true }
+  },
   notes: {
     type: String,
     trim: true
